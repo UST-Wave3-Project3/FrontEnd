@@ -1,152 +1,119 @@
 import React, { useState } from 'react';
-import {
-  TextField,
-  Button,
-  Alert,
-  Snackbar,
-  IconButton,
-  InputAdornment,
-} from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-import './login.css';
-import Nav from '../navtop';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import './login.css';
 
-const LoginForm = () => {
-  const [formData, setFormData] = useState({
-    user_id: '',
-    password: '',
-  });
+const Login = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [darkMode, setDarkMode] = useState(false);
+    const navigate = useNavigate();
 
-  const [errorMessage, setErrorMessage] = useState(null);
-  const [showError, setShowError] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [successMessage, setSuccessMessage] = useState(null);
-  const navigate = useNavigate();
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        
+        try {
+            const response = await axios.post('http://localhost:8060/api/users/validate/user', {
+                userEmail: email,
+                userPassword: password
+            });
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+            localStorage.setItem('token', response.data.token);
+            localStorage.setItem('email', response.data.email);
+            localStorage.setItem('roles', JSON.stringify(response.data.allRoles));
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setShowError(false);
+            if (response.data.allRoles.includes('ADMIN')) {
+                navigate('/admin');
+            } else {
+                navigate('/user');
+            }
+        } catch (err) {
+            setError('Invalid credentials. Please try again.');
+        }
+    };
 
-    try {
-      const response = await axios.post('http://localhost:3001/api/v1/users/login', formData);
-      console.log('User logged in successfully:', response.data);
+    const togglePasswordVisibility = () => {
+        setShowPassword(!showPassword);
+    };
 
-      const { token, role } = response.data;
-      localStorage.setItem('token', token);
+    const toggleDarkMode = () => {
+        setDarkMode(!darkMode);
+    };
 
-      // Conditional redirection based on role
-      if (role === 'Admin') {
-        navigate('/adminDashboard');
-      } else if (role === 'Employee' || role === 'Manager') {
-        navigate('/employeeManagerDashboard');
-      } else {
-        throw new Error('Invalid role');
-      }
-    } catch (error) {
-      setErrorMessage(error.response?.data?.message || 'Login failed. Please try again.');
-      setShowError(true);
-    }
-  };
+    return (
+        <div className={`app ${darkMode ? 'dark-mode' : 'light-mode'}`}>
+            <button onClick={toggleDarkMode} className="theme-toggle">
+                {darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+            </button>
+            
+            <div className="container">
+                <div className="login-wrapper">
+                    {/* Left side */}
+                    <div className="welcome-side">
+                        <div className="welcome-content">
+                            <h1>Welcome Back!</h1>
+                            <p>Please login to access your account</p>
+                        </div>
+                    </div>
 
-  const togglePasswordVisibility = () => {
-    setShowPassword((prevShowPassword) => !prevShowPassword);
-  };
+                    {/* Right side - Login Form */}
+                    <div className="login-side">
+                        <div className="login-content">
+                            <h2>Login</h2>
+                            {error && (
+                                <div className="error-message">
+                                    {error}
+                                </div>
+                            )}
+                            <form onSubmit={handleSubmit}>
+                                <div className="input-group">
+                                    <label>Email</label>
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        required
+                                        placeholder="Enter your email"
+                                    />
+                                </div>
 
-  return (
-    <div className="loginsignup">
-      <Nav option1="Home" link1="/" option2="Home" link2="/" />
-      <div className="loginparent">
-        <div className="left">
-          <div className="welcomgrp">
-            <h3>Welcome to Login</h3>
-          </div>
+                                <div className="input-group">
+                                    <label>Password</label>
+                                    <div className="password-input">
+                                        <input
+                                            type={showPassword ? 'text' : 'password'}
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            required
+                                            placeholder="Enter your password"
+                                        />
+                                        <button 
+                                            type="button" 
+                                            onClick={togglePasswordVisibility}
+                                            className="visibility-toggle"
+                                        >
+                                            {showPassword ? '👁️' : '👁️‍🗨️'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <button type="submit" className="login-button">
+                                    Login
+                                </button>
+
+                                <button type="button" className="forgot-password">
+                                    Forgot Password?
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div className="right">
-          <h3>Login</h3>
-          <form className="inputs" onSubmit={handleSubmit}>
-            {/* Error Snackbar */}
-            <Snackbar
-              open={showError}
-              autoHideDuration={1000}
-              onClose={() => setShowError(false)}
-              anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-            >
-              <Alert onClose={() => setShowError(false)} severity="error" sx={{ width: '100%' }}>
-                {errorMessage}
-              </Alert>
-            </Snackbar>
-
-            {/* Success Snackbar */}
-            <Snackbar
-              open={Boolean(successMessage)}
-              autoHideDuration={1000}
-              onClose={() => setSuccessMessage(null)}
-              anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-            >
-              <Alert onClose={() => setSuccessMessage(null)} severity="success" sx={{ width: '100%' }}>
-                {successMessage}
-              </Alert>
-            </Snackbar>
-
-            {/* User ID Input */}
-            <TextField
-              className="signupinput"
-              margin="normal"
-              fullWidth
-              name="user_id"
-              label="User ID"
-              type="text"
-              value={formData.user_id}
-              onChange={handleChange}
-              required
-            />
-
-            {/* Password Input */}
-            <TextField
-              className="signupinput"
-              margin="normal"
-              fullWidth
-              name="password"
-              label="Password"
-              type={showPassword ? 'text' : 'password'}
-              value={formData.password}
-              onChange={handleChange}
-              required
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={togglePasswordVisibility} edge="end">
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-
-            {/* Login Button */}
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2, backgroundColor: '#016375', borderRadius: '15px' }}
-            >
-              Login
-            </Button>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
-export default LoginForm;
+export default Login;
